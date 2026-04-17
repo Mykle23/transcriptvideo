@@ -23,6 +23,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
+# Webapp database
+webapp/transcriptvideo.db
+
 # Logs y temporales
 *.log
 *.tmp
