@@ -9,6 +9,6 @@ echo.
 
 start http://localhost:8000
 
-wsl -d Ubuntu bash -c "cd /mnt/c/Development/transcriptvideo && source venv/bin/activate && python -m uvicorn webapp.app:app --host 0.0.0.0 --port 8000"
+wsl -d Ubuntu bash -c "cd /mnt/c/Development/transcriptvideo && source venv/bin/activate && HF_HUB_ENABLE_HF_TRANSFER=0 HF_HUB_DOWNLOAD_TIMEOUT=60 python -m uvicorn webapp.app:app --host 0.0.0.0 --port 8000"
 
 pause
