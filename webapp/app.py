@@ -119,6 +119,8 @@ async def create_job_endpoint(
     name: str = Form(...),
     file: UploadFile = File(...),
 ):
+    if not file.filename:
+        raise HTTPException(400, "Uploaded file must have a filename.")
     ext = Path(file.filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, f"Only {', '.join(ALLOWED_EXTENSIONS)} files allowed.")
@@ -127,17 +129,22 @@ async def create_job_endpoint(
     video_filename = f"{job_id}{ext}"
     video_path = VIDEOS_DIR / video_filename
 
-    async with aiofiles.open(video_path, "wb") as f:
-        while chunk := await file.read(1024 * 1024):  # 1MB chunks
-            await f.write(chunk)
+    try:
+        async with aiofiles.open(video_path, "wb") as f:
+            while chunk := await file.read(1024 * 1024):  # 1MB chunks
+                await f.write(chunk)
 
-    job = create_job(
-        DB_PATH,
-        name=name.strip(),
-        folder_name=job_id,
-        video_filename=video_filename,
-        job_id=job_id,
-    )
+        job = create_job(
+            DB_PATH,
+            name=name.strip(),
+            folder_name=job_id,
+            video_filename=video_filename,
+            job_id=job_id,
+        )
+    except Exception:
+        video_path.unlink(missing_ok=True)
+        raise
+
     return job
 
 

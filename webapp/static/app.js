@@ -65,7 +65,8 @@ function appData() {
                 this.categorizeJobs();
             };
             this.eventSource.onerror = () => {
-                // Reconnect after a delay
+                this.eventSource.close();
+                this.eventSource = null;
                 setTimeout(() => this.connectSSE(), 3000);
             };
         },

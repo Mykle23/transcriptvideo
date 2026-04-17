@@ -108,6 +108,7 @@ class TranscriptionWorker:
 
             if result.get("cancelled"):
                 logger.info("Job %s cancelled.", job_id)
+                update_job(self.db_path, job_id, status="cancelled")
                 self._current_job_id = None
                 return
 
