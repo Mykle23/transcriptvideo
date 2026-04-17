@@ -42,6 +42,9 @@ function appData() {
         // ── SSE ───────────────────────────────────────
 
         connectSSE() {
+            if (this.eventSource) {
+                this.eventSource.close();
+            }
             this.eventSource = new EventSource('/api/progress');
             this.eventSource.onmessage = (event) => {
                 const active = JSON.parse(event.data);

@@ -1,7 +1,10 @@
+import re
 import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+
+_VALID_COLUMN = re.compile(r"^[a-z_]+$")
 
 
 def _row_to_dict(cursor: sqlite3.Cursor, row: sqlite3.Row) -> dict:
@@ -95,6 +98,8 @@ def get_next_pending(db_path: Path) -> dict | None:
 def update_job(db_path: Path, job_id: str, **fields) -> None:
     if not fields:
         return
+    if not all(_VALID_COLUMN.match(k) for k in fields):
+        raise ValueError(f"Invalid column names: {list(fields.keys())}")
     set_clause = ", ".join(f"{k} = ?" for k in fields)
     values = list(fields.values()) + [job_id]
     conn = _connect(db_path)
@@ -133,13 +138,17 @@ def index_transcription(
 def search_transcriptions(db_path: Path, query: str) -> list[dict]:
     conn = _connect(db_path)
     conn.row_factory = None
-    results = conn.execute(
-        """SELECT job_id, name, snippet(transcriptions_fts, 2, '<mark>', '</mark>', '...', 40)
-           FROM transcriptions_fts
-           WHERE content MATCH ?
-           ORDER BY rank""",
-        (query,),
-    ).fetchall()
+    try:
+        results = conn.execute(
+            """SELECT job_id, name, snippet(transcriptions_fts, 2, '<mark>', '</mark>', '...', 40)
+               FROM transcriptions_fts
+               WHERE content MATCH ?
+               ORDER BY rank""",
+            (query,),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        conn.close()
+        return []
     conn.close()
     return [
         {"job_id": r[0], "name": r[1], "snippet": r[2]}

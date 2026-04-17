@@ -45,9 +45,6 @@ class TranscriptionWorker:
         if self._thread:
             self._thread.join(timeout=5)
 
-    def cancel_current(self, job_id: str) -> bool:
-        return self._current_job_id == job_id
-
     def _load_model(self):
         if self.model is not None:
             return
@@ -85,7 +82,13 @@ class TranscriptionWorker:
             self._current_job_id = None
             return
 
+        last_update = [0.0]  # mutable for closure
+
         def on_progress(pct: float, text: str) -> None:
+            now = time.monotonic()
+            if now - last_update[0] < 1.0 and pct < 100.0:
+                return
+            last_update[0] = now
             update_job(self.db_path, job_id, progress=round(pct, 1))
 
         def should_cancel() -> bool:

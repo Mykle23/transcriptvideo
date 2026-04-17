@@ -50,6 +50,8 @@ STATIC_DIR = WEBAPP_DIR / "static"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
+    TRANSCRIPTIONS_DIR.mkdir(parents=True, exist_ok=True)
     init_db(DB_PATH)
     _import_existing_transcriptions()
     worker = TranscriptionWorker(DB_PATH)
