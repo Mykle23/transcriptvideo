@@ -124,7 +124,7 @@ class TranscriptionWorker:
             )
 
             # Index for full-text search
-            txt_path = output_dir / "transcripcion.txt"
+            txt_path = output_dir / "transcription.txt"
             if txt_path.exists():
                 content = txt_path.read_text(encoding="utf-8")
                 index_transcription(

@@ -3,8 +3,9 @@ venv/
 .venv/
 env/
 
-# Videos y transcripciones (contenido local, no versionar)
+# Videos and transcriptions (local content, not versioned)
 videos/
+transcriptions/
 transcripciones/
 
 # Archivos sueltos de transcripciones en la raíz

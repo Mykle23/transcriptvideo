@@ -2,7 +2,7 @@ from pathlib import Path
 
 BASE_DIR = Path("/mnt/c/Development/transcriptvideo")
 VIDEOS_DIR = BASE_DIR / "videos"
-TRANSCRIPTIONS_DIR = BASE_DIR / "transcripciones"
+TRANSCRIPTIONS_DIR = BASE_DIR / "transcriptions"
 DB_PATH = BASE_DIR / "webapp" / "transcriptvideo.db"
 
 MODEL_SIZE = "large-v3"

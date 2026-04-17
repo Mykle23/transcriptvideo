@@ -1,101 +1,162 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TranscriptVideo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>
+        (function() {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        })();
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
-                    colors: { brand: '#6366f1' }
-                }
-            }
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                    colors: {
+                        accent: {
+                            DEFAULT: '#7c8cff',
+                            hover: '#6b7aff',
+                        },
+                    },
+                },
+            },
         }
     </script>
     <style>
         [x-cloak] { display: none !important; }
-        mark { background-color: #fde68a; padding: 0 2px; border-radius: 2px; }
+        html { font-feature-settings: "cv02", "cv03", "cv04", "cv11"; }
+        body { font-feature-settings: "cv02", "cv03", "cv04", "cv11"; }
+        mark { background-color: rgba(124, 140, 255, 0.25); color: inherit; padding: 0 2px; border-radius: 2px; }
+        .dark mark { background-color: rgba(124, 140, 255, 0.3); }
+        .dark ::-webkit-scrollbar { width: 8px; height: 8px; }
+        .dark ::-webkit-scrollbar-track { background: transparent; }
+        .dark ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen">
+<body class="font-sans antialiased bg-white dark:bg-[#0a0a0a] text-neutral-900 dark:text-neutral-100 min-h-screen selection:bg-accent/30">
 
 <div x-data="appData()" x-init="init()" x-cloak>
 
     <!-- Header -->
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-            <h1 class="text-lg font-semibold text-gray-800">TranscriptVideo</h1>
-            <div class="flex items-center gap-3">
-                <button @click="searchOpen = true; $nextTick(() => $refs.searchInput.focus())"
-                    class="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    <header class="sticky top-0 z-10 backdrop-blur-sm bg-white/80 dark:bg-[#0a0a0a]/80 border-b border-neutral-200 dark:border-neutral-800">
+        <div class="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-md bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center">
+                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                     </svg>
-                    Buscar
+                </div>
+                <h1 class="text-sm font-semibold tracking-tight">TranscriptVideo</h1>
+            </div>
+            <div class="flex items-center gap-1">
+                <button @click="searchOpen = true; $nextTick(() => $refs.searchInput.focus())"
+                    class="p-2 rounded-md text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+                    title="Search">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
                 </button>
-                <button @click="if(confirm('Apagar el servidor?')) shutdown()"
-                    class="text-sm text-red-500 hover:text-red-700">
-                    Apagar
+                <button @click="toggleTheme()"
+                    class="p-2 rounded-md text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+                    title="Toggle theme">
+                    <svg x-show="theme === 'dark'" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    <svg x-show="theme === 'light'" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                    </svg>
+                </button>
+                <div class="w-px h-5 bg-neutral-200 dark:bg-neutral-800 mx-1"></div>
+                <button @click="if(confirm('Shut down server?')) shutdown()"
+                    class="px-2.5 py-1 rounded-md text-xs font-medium text-neutral-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+                    Shut down
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 py-6 space-y-8">
+    <main class="max-w-3xl mx-auto px-6 py-10 space-y-10">
 
-        <!-- Upload Section -->
-        <section class="bg-white rounded-lg border border-gray-200 p-5">
-            <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Subir video</h2>
-            <form @submit.prevent="upload()" class="space-y-3">
-                <div>
-                    <input type="text" x-model="uploadName" placeholder="Nombre de la transcripcion"
-                        class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-                        required>
-                </div>
-                <div class="flex items-center gap-3">
-                    <label class="flex-1 relative">
-                        <input type="file" accept=".mp4" @change="uploadFile = $event.target.files[0]"
-                            class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
+        <!-- Hero / Upload -->
+        <section>
+            <div class="mb-5">
+                <h2 class="text-xl font-semibold tracking-tight">Transcriptions</h2>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Upload a video and process it locally with Whisper.</p>
+            </div>
+
+            <form @submit.prevent="upload()"
+                class="group relative rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#0f0f0f] p-4 space-y-3 focus-within:border-accent/60 dark:focus-within:border-accent/60 transition-colors">
+                <input type="text" x-model="uploadName"
+                    placeholder="Transcription name"
+                    class="w-full bg-transparent text-sm focus:outline-none placeholder:text-neutral-400 dark:placeholder:text-neutral-600"
+                    required>
+                <div class="flex items-center gap-3 pt-2 border-t border-neutral-100 dark:border-neutral-800/80">
+                    <label class="flex-1 cursor-pointer">
+                        <input type="file" accept=".mp4" @change="uploadFile = $event.target.files[0]" class="hidden">
+                        <div class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                            <span x-show="!uploadFile">Attach .mp4</span>
+                            <span x-show="uploadFile" x-text="uploadFile?.name" class="truncate max-w-[240px] font-mono text-xs"></span>
+                        </div>
                     </label>
                     <button type="submit" :disabled="!uploadFile || !uploadName.trim() || uploading"
-                        class="px-4 py-2 bg-brand text-white text-sm font-medium rounded hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed">
-                        <span x-show="!uploading">Subir</span>
-                        <span x-show="uploading" x-text="'Subiendo ' + uploadProgress + '%'"></span>
+                        class="px-3 py-1.5 rounded-md text-xs font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-700 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        <span x-show="!uploading">Upload</span>
+                        <span x-show="uploading" x-text="'Uploading ' + uploadProgress + '%'"></span>
                     </button>
                 </div>
-                <div x-show="uploading" class="w-full bg-gray-200 rounded-full h-1.5">
-                    <div class="bg-brand h-1.5 rounded-full transition-all duration-300"
-                         :style="'width:' + uploadProgress + '%'"></div>
+                <div x-show="uploading" class="h-0.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-accent transition-all duration-300" :style="'width:' + uploadProgress + '%'"></div>
                 </div>
             </form>
         </section>
 
         <!-- Active Queue -->
         <section x-show="activeJobs.length > 0">
-            <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">En proceso</h2>
-            <div class="space-y-3">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">In progress</h3>
+            <div class="space-y-2">
                 <template x-for="job in activeJobs" :key="job.id">
-                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#0f0f0f] p-4">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="font-medium text-sm" x-text="job.name"></span>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs px-2 py-0.5 rounded-full"
-                                    :class="job.status === 'processing' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'"
-                                    x-text="job.status === 'processing' ? 'Procesando' : 'En cola'"></span>
+                            <div class="flex items-center gap-2 min-w-0">
+                                <template x-if="job.status === 'processing'">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></div>
+                                </template>
+                                <template x-if="job.status === 'pending'">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+                                </template>
+                                <span class="text-sm font-medium truncate" x-text="job.name"></span>
+                            </div>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="text-xs text-neutral-500 dark:text-neutral-400"
+                                    x-text="job.status === 'processing' ? 'Processing' : 'Queued'"></span>
                                 <button @click="cancelJob(job.id)"
-                                    class="text-xs text-red-500 hover:text-red-700">Cancelar</button>
+                                    class="text-xs text-neutral-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">Cancel</button>
                             </div>
                         </div>
-                        <div x-show="job.status === 'processing'" class="w-full bg-gray-200 rounded-full h-1.5">
-                            <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
-                                 :style="'width:' + job.progress + '%'"></div>
+                        <div x-show="job.status === 'processing'" class="flex items-center gap-3">
+                            <div class="flex-1 h-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                                <div class="h-full bg-accent transition-all duration-500" :style="'width:' + job.progress + '%'"></div>
+                            </div>
+                            <span class="text-xs font-mono text-neutral-500 dark:text-neutral-400 tabular-nums w-10 text-right" x-text="Math.round(job.progress) + '%'"></span>
                         </div>
-                        <div x-show="job.status === 'processing'" class="text-xs text-gray-400 mt-1"
-                             x-text="Math.round(job.progress) + '%'"></div>
                     </div>
                 </template>
             </div>
@@ -103,118 +164,148 @@
 
         <!-- Completed -->
         <section>
-            <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Transcripciones</h2>
-            <div x-show="completedJobs.length === 0" class="text-sm text-gray-400 italic">
-                No hay transcripciones todavia.
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Archive</h3>
+                <span class="text-xs text-neutral-400 dark:text-neutral-500 font-mono tabular-nums" x-text="completedJobs.length"></span>
             </div>
-            <div class="space-y-2">
-                <template x-for="job in completedJobs" :key="job.id">
-                    <div class="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:border-gray-300 transition"
+            <div x-show="completedJobs.length === 0" class="rounded-lg border border-dashed border-neutral-200 dark:border-neutral-800 py-10 text-center">
+                <p class="text-sm text-neutral-400 dark:text-neutral-500">No transcriptions yet.</p>
+            </div>
+            <div x-show="completedJobs.length > 0" class="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#0f0f0f] overflow-hidden">
+                <template x-for="(job, idx) in completedJobs" :key="job.id">
+                    <div class="group flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors"
+                         :class="idx > 0 ? 'border-t border-neutral-200 dark:border-neutral-800' : ''"
                          @click="openTranscription(job)">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <span class="font-medium text-sm" x-text="job.name"></span>
-                                <div class="text-xs text-gray-400 mt-0.5">
-                                    <span x-text="formatDate(job.completed_at || job.created_at)"></span>
-                                    <span x-show="job.language" class="ml-2" x-text="job.language?.toUpperCase()"></span>
-                                    <span x-show="job.audio_duration" class="ml-2" x-text="formatDuration(job.audio_duration)"></span>
-                                </div>
-                            </div>
+                        <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
-                                <span x-show="job.status === 'failed'"
-                                    class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Error</span>
-                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                </svg>
+                                <template x-if="job.status === 'failed'">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></div>
+                                </template>
+                                <template x-if="job.status === 'cancelled'">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-neutral-400 shrink-0"></div>
+                                </template>
+                                <template x-if="job.status === 'completed'">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></div>
+                                </template>
+                                <span class="text-sm font-medium truncate" x-text="job.name"></span>
+                            </div>
+                            <div class="mt-0.5 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
+                                <span x-text="formatDate(job.completed_at || job.created_at)"></span>
+                                <span x-show="job.language" x-text="job.language?.toUpperCase()"></span>
+                                <span x-show="job.audio_duration" x-text="formatDuration(job.audio_duration)"></span>
                             </div>
                         </div>
+                        <svg class="w-4 h-4 text-neutral-300 dark:text-neutral-700 group-hover:text-neutral-500 dark:group-hover:text-neutral-400 transition-colors shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                        </svg>
                     </div>
                 </template>
             </div>
         </section>
+
+        <footer class="pt-4 text-center">
+            <p class="text-xs text-neutral-400 dark:text-neutral-600">
+                Powered by <span class="font-mono">faster-whisper</span> on CUDA
+            </p>
+        </footer>
     </main>
 
     <!-- Transcription Detail Modal -->
     <div x-show="detailJob" x-cloak
-         class="fixed inset-0 bg-black/40 z-20 flex items-start justify-center pt-12 px-4"
-         @click.self="detailJob = null; detailContent = ''">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col" @click.stop>
+         class="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-20 flex items-start justify-center pt-[8vh] px-4"
+         @click.self="detailJob = null; detailContent = ''"
+         @keydown.escape.window="detailJob = null; detailContent = ''">
+        <div class="bg-white dark:bg-[#0f0f0f] border border-neutral-200 dark:border-neutral-800 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl"
+             @click.stop>
             <!-- Modal header -->
-            <div class="flex items-center justify-between p-4 border-b border-gray-200">
+            <div class="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                     <template x-if="!editingName">
-                        <h3 class="font-medium text-sm truncate cursor-pointer hover:text-brand"
-                            @click="editingName = true; editNameVal = detailJob.name"
-                            x-text="detailJob?.name"></h3>
+                        <h3 class="font-medium text-sm truncate cursor-pointer hover:text-accent transition-colors"
+                            @click="editingName = true; editNameVal = detailJob.name; $nextTick(() => $refs.nameInput.focus())"
+                            x-text="detailJob?.name"
+                            title="Click to edit"></h3>
                     </template>
                     <template x-if="editingName">
                         <form @submit.prevent="saveName()" class="flex items-center gap-2 flex-1">
                             <input x-model="editNameVal" x-ref="nameInput"
-                                class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                                class="flex-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md px-2 py-1 text-sm focus:outline-none focus:border-accent"
                                 @keydown.escape="editingName = false">
-                            <button type="submit" class="text-xs text-brand hover:underline">Guardar</button>
-                            <button type="button" @click="editingName = false" class="text-xs text-gray-400">Cancelar</button>
+                            <button type="submit" class="text-xs font-medium text-accent hover:text-accent-hover">Save</button>
+                            <button type="button" @click="editingName = false" class="text-xs text-neutral-500">Cancel</button>
                         </form>
                     </template>
                 </div>
-                <div class="flex items-center gap-2 ml-3">
+                <div class="flex items-center gap-1 ml-3">
                     <a :href="'/api/jobs/' + detailJob?.id + '/download'"
-                       class="text-xs text-brand hover:underline">Descargar</a>
+                       class="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+                       title="Download .txt">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </a>
                     <select x-show="detailJob?.video_filename"
                         :value="detailJob?.keep_video ? '1' : '0'"
                         @change="toggleKeepVideo(detailJob.id, $event.target.value === '1')"
-                        class="text-xs border border-gray-300 rounded px-1 py-0.5">
-                        <option value="1">Conservar video</option>
-                        <option value="0">Borrar video</option>
+                        class="text-xs bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md px-2 py-1 focus:outline-none focus:border-accent">
+                        <option value="1">Keep video</option>
+                        <option value="0">Delete video</option>
                     </select>
-                    <button @click="if(confirm('Eliminar esta transcripcion?')) deleteJob(detailJob.id)"
-                        class="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+                    <button @click="if(confirm('Delete this transcription?')) deleteJob(detailJob.id)"
+                        class="p-1.5 rounded-md text-neutral-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+                        title="Delete">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
                     <button @click="detailJob = null; detailContent = ''"
-                        class="text-gray-400 hover:text-gray-600 ml-1">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        class="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+                        title="Close">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
                 </div>
             </div>
             <!-- Modal body -->
-            <div class="p-4 overflow-y-auto flex-1">
-                <div x-show="!detailContent" class="text-sm text-gray-400">Cargando...</div>
-                <pre class="text-sm leading-relaxed whitespace-pre-wrap font-mono text-gray-700"
-                     x-text="detailContent"></pre>
+            <div class="p-5 overflow-y-auto flex-1">
+                <div x-show="!detailContent" class="text-sm text-neutral-400 dark:text-neutral-600">Loading...</div>
+                <pre class="text-sm leading-relaxed whitespace-pre-wrap font-mono text-neutral-700 dark:text-neutral-300" x-text="detailContent"></pre>
             </div>
         </div>
     </div>
 
     <!-- Search Modal -->
     <div x-show="searchOpen" x-cloak
-         class="fixed inset-0 bg-black/40 z-20 flex items-start justify-center pt-12 px-4"
+         class="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-20 flex items-start justify-center pt-[12vh] px-4"
          @click.self="searchOpen = false"
          @keydown.escape.window="searchOpen = false">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[70vh] flex flex-col" @click.stop>
-            <div class="p-4 border-b border-gray-200">
+        <div class="bg-white dark:bg-[#0f0f0f] border border-neutral-200 dark:border-neutral-800 rounded-xl w-full max-w-xl max-h-[70vh] flex flex-col shadow-2xl"
+             @click.stop>
+            <div class="flex items-center gap-3 p-3 border-b border-neutral-200 dark:border-neutral-800">
+                <svg class="w-4 h-4 text-neutral-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
                 <input type="text" x-model="searchQuery" @input.debounce.300ms="doSearch()"
                     x-ref="searchInput"
-                    placeholder="Buscar en todas las transcripciones..."
-                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    placeholder="Search across all transcriptions..."
+                    class="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-neutral-400 dark:placeholder:text-neutral-600">
+                <kbd class="hidden sm:inline-block text-[10px] font-mono text-neutral-400 dark:text-neutral-600 border border-neutral-200 dark:border-neutral-800 rounded px-1.5 py-0.5">ESC</kbd>
             </div>
-            <div class="p-4 overflow-y-auto flex-1">
-                <div x-show="searchResults === null" class="text-sm text-gray-400">
-                    Escribe para buscar.
+            <div class="overflow-y-auto flex-1">
+                <div x-show="searchResults === null" class="p-8 text-center text-sm text-neutral-400 dark:text-neutral-600">
+                    Type to search across content.
                 </div>
-                <div x-show="searchResults !== null && searchResults.length === 0"
-                     class="text-sm text-gray-400">
-                    Sin resultados.
+                <div x-show="searchResults !== null && searchResults.length === 0" class="p-8 text-center text-sm text-neutral-400 dark:text-neutral-600">
+                    No results.
                 </div>
-                <div class="space-y-3">
-                    <template x-for="r in (searchResults || [])" :key="r.job_id">
-                        <div class="border border-gray-200 rounded p-3 cursor-pointer hover:border-gray-300"
-                             @click="openTranscriptionById(r.job_id); searchOpen = false">
-                            <div class="text-sm font-medium" x-text="r.name"></div>
-                            <div class="text-xs text-gray-500 mt-1" x-html="r.snippet"></div>
-                        </div>
-                    </template>
-                </div>
+                <template x-for="r in (searchResults || [])" :key="r.job_id">
+                    <div class="px-4 py-3 border-t border-neutral-200 dark:border-neutral-800 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors"
+                         @click="openTranscriptionById(r.job_id); searchOpen = false">
+                        <div class="text-sm font-medium" x-text="r.name"></div>
+                        <div class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-mono leading-relaxed" x-html="r.snippet"></div>
+                    </div>
+                </template>
             </div>
         </div>
     </div>

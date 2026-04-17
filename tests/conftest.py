@@ -7,7 +7,7 @@ import pytest
 def tmp_dirs(tmp_path):
     videos = tmp_path / "videos"
     videos.mkdir()
-    transcriptions = tmp_path / "transcripciones"
+    transcriptions = tmp_path / "transcriptions"
     transcriptions.mkdir()
     return {"videos": videos, "transcriptions": transcriptions, "base": tmp_path}
 

@@ -1,196 +1,216 @@
 # TranscriptVideo
 
-Herramienta local para transcribir videos usando **faster-whisper** con GPU NVIDIA (CUDA). Incluye una webapp para subir videos, gestionar la cola de transcripcion y buscar en transcripciones completadas desde cualquier dispositivo via Tailscale.
+<p align="left">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/tests-21%20passing-green.svg" alt="Tests passing">
+  <img src="https://img.shields.io/badge/GPU-CUDA-76B900.svg" alt="CUDA">
+  <a href="docs/README.es.md"><img src="https://img.shields.io/badge/lang-ES-yellow.svg" alt="Espanol"></a>
+</p>
 
-## Requisitos
+> Self-hosted video transcription that runs entirely on your own GPU. Upload a video, get an accurate transcript. No cloud, no API keys, no data leaving your machine.
 
-- **Windows 11** con **WSL2** (distro Ubuntu)
-- **GPU NVIDIA** con drivers y CUDA Toolkit instalados (en Windows — WSL2 usa el driver del host via el pasaje CUDA de NVIDIA)
-- **Python 3.12** dentro de WSL (`sudo apt install python3.12 python3.12-venv`)
-- **Git** dentro de WSL
-- **Tailscale** (opcional, para acceso desde otros dispositivos)
+Built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper) with a minimal FastAPI + Alpine.js web UI. Designed for personal use over Tailscale/VPN — upload from any device, process on the machine with the GPU.
 
-## Instalacion (desde cero)
+<!-- Add a screenshot at docs/screenshot.png -->
+<!-- ![TranscriptVideo UI](docs/screenshot.png) -->
 
-Todos los comandos se ejecutan **dentro de WSL** (no en CMD/PowerShell).
+## Features
 
-### 1. Clonar el proyecto
+- **Local only** — Whisper runs on your GPU, videos never leave the machine
+- **Web UI** — upload, queue, monitor progress live, read + download transcripts
+- **Dark / light theme** — Linear/Vercel-inspired minimal interface, dark by default
+- **FIFO queue** with cancellation support (one job at a time, GPU-bound)
+- **Live progress via SSE** — real-time updates as segments are transcribed
+- **Full-text search** across all past transcripts (SQLite FTS5)
+- **Editable names** — rename transcripts after the fact
+- **Keep or delete** the source video per job
+- **Auto language detection** — primarily Spanish + English, others supported
+- **Hallucination cleanup** — deterministic post-processing strips the typical `no no no no` / `Yes. Yes. Yes.` Whisper artifacts
+- **CLI fallback** — `transcribe.py` still works standalone for scripted use
+- **No Node.js** — frontend is a single Jinja2 template + Alpine.js + Tailwind via CDN
+
+## Why this exists
+
+Cloud transcription services are fast and convenient, but they have real downsides: you send your audio to someone else's servers, pay per minute, and trust them with recordings you may not want floating around. For personal content (meetings, voice notes, OBS recordings) a local GPU can transcribe faster than real-time with `large-v3` quality — you just need a reasonable UI around it.
+
+This project wraps the standard faster-whisper workflow in a small webapp so you can upload from your laptop/phone over your VPN, queue jobs, and get searchable transcripts without ever hitting a third-party API.
+
+## Requirements
+
+- **Windows 11** with **WSL2** (Ubuntu distro)
+- **NVIDIA GPU** with drivers + CUDA (WSL2 uses the Windows driver via NVIDIA's CUDA passthrough)
+- **Python 3.12** inside WSL (`sudo apt install python3.12 python3.12-venv`)
+- **Git** inside WSL
+- **Tailscale** (optional, for access from other devices)
+
+> Note: the launcher targets WSL2 on Windows but the backend is plain FastAPI — it runs on any Linux with CUDA. Swap the `.bat` for a shell script if you want to run it natively.
+
+## Installation (from scratch)
+
+All commands run **inside WSL** (not CMD/PowerShell).
+
+### 1. Clone
 
 ```bash
 cd /mnt/c/Development
-git clone git@github.com:Mykle23/transcriptvideo.git
+git clone https://github.com/Mykle23/transcriptvideo.git
 cd transcriptvideo
 ```
 
-> Si cloneas via HTTPS en vez de SSH: `git clone https://github.com/Mykle23/transcriptvideo.git`
-
-### 2. Crear el entorno virtual
+### 2. Create the venv
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3. Instalar dependencias
+### 3. Install dependencies
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-> Nota: el `pip install` baja ~2 GB de dependencias (PyTorch + CUDA + ctranslate2). La primera vez tarda varios minutos.
+> First install pulls ~2 GB (PyTorch + CUDA + ctranslate2). Takes several minutes.
 
-### 4. Verificar CUDA
+### 4. Verify CUDA
 
 ```bash
 python -c "from faster_whisper import WhisperModel; WhisperModel('tiny', device='cuda'); print('CUDA OK')"
 ```
 
-Si esto funciona, el entorno esta listo. La primera vez descarga un modelo chico (`tiny`, ~40 MB) para validar.
+### 5. (Optional) Pre-download the model
 
-### 5. (Opcional) Pre-descargar el modelo grande
-
-El primer uso real con `large-v3` baja ~3 GB. Para evitar esperar en la primera transcripcion, descargarlo ahora:
+The first real run with `large-v3` pulls ~3 GB. Pre-download it now to avoid waiting later:
 
 ```bash
 HF_HUB_ENABLE_HF_TRANSFER=0 python -c "from faster_whisper import WhisperModel; WhisperModel('large-v3', device='cuda', compute_type='float16')"
 ```
 
-> **Importante**: usar siempre `HF_HUB_ENABLE_HF_TRANSFER=0`. Sin esto, el downloader paralelo agresivo puede tumbar la wifi en algunos PCs (ver Troubleshooting).
+> Always pass `HF_HUB_ENABLE_HF_TRANSFER=0`. Without it, the parallel downloader can crash WiFi on some PCs (see Troubleshooting).
 
-### 6. Correr los tests (opcional)
+### 6. (Optional) Run the tests
 
 ```bash
 pytest tests/ -v
 ```
 
-Deberian pasar los 21 tests.
+21 tests should pass.
 
-## Uso
+## Usage
 
-### Opcion A: Webapp (recomendado)
+### Webapp
 
-Doble clic en **`start-webapp.bat`** desde el escritorio de Windows.
+Double-click **`start-webapp.bat`** from the Windows desktop.
 
-Esto:
-1. Abre el navegador en `http://localhost:8000`
-2. Arranca el servidor FastAPI dentro de WSL
-3. Carga el modelo Whisper en GPU (~10 segundos, una vez ya descargado)
+- Opens `http://localhost:8000` in your browser
+- Launches the FastAPI server inside WSL
+- Loads the Whisper model into GPU (~10 s once cached)
 
-> Si el navegador muestra error de conexion, esperar unos segundos y refrescar.
+If the browser shows a connection error, wait a few seconds and refresh (the server needs a moment to start).
 
-> **Primera ejecucion:** si el modelo `large-v3` no esta todavia en el cache de HuggingFace (`/root/.cache/huggingface/hub/`), se descarga automaticamente la primera vez (~3 GB). Puede tardar 10-15 minutos segun la conexion.
-
-#### Acceso desde otros dispositivos
-
-El servidor escucha en `0.0.0.0:8000`. Desde otro dispositivo en la misma red Tailscale, abrir:
+**Access from other devices (via Tailscale):**
 
 ```
-http://<ip-tailscale-del-pc>:8000
+http://<tailscale-ip-of-the-pc>:8000
 ```
 
-#### Funciones de la webapp
+The server binds to `0.0.0.0:8000`, so any device on the same Tailscale net can reach it.
 
-- **Subir video**: Elegir un `.mp4`, darle un nombre, y subirlo. Se muestra progreso de subida.
-- **Cola**: Los videos se procesan en orden (FIFO). Se puede cancelar cualquier job en cola o en proceso.
-- **Progreso en vivo**: La barra de progreso se actualiza en tiempo real mientras se transcribe.
-- **Ver transcripcion**: Clic en una transcripcion completada para leerla directamente en el navegador.
-- **Descargar**: Descargar el `.txt` con la transcripcion.
-- **Renombrar**: Clic en el nombre de una transcripcion para editarlo.
-- **Buscar**: Buscar texto en todas las transcripciones desde el boton "Buscar".
-- **Borrar video**: Elegir si conservar o borrar el video original despues de transcribir.
-- **Apagar**: Boton "Apagar" en la UI para detener el servidor.
-
-### Opcion B: CLI (uso directo)
+### CLI (direct use)
 
 ```bash
-cd /mnt/c/Development/transcriptvideo
 source venv/bin/activate
-python transcribe.py "nombre_del_video.mp4"
+python transcribe.py "my_video.mp4"
 ```
 
-Los videos deben estar en `videos/`. Las transcripciones se guardan en `transcripciones/<nombre>/`.
+Videos must live under `videos/`. Output goes to `transcriptions/<video-name>/transcription.txt`.
 
-## Estructura del proyecto
+## Project structure
 
 ```
 transcriptvideo/
-├── transcribe.py              # CLI original (standalone)
-├── start-webapp.bat           # Lanzador Windows
-├── videos/                    # Videos .mp4
-├── transcripciones/           # Carpeta por transcripcion
-│   └── <nombre>/
-│       └── transcripcion.txt
+├── transcribe.py              # standalone CLI (legacy, still works)
+├── start-webapp.bat           # Windows launcher (WSL + uvicorn + browser)
+├── videos/                    # .mp4 files (ignored by git)
+├── transcriptions/            # output folder per job (ignored by git)
+│   └── <name>/
+│       └── transcription.txt
 ├── webapp/
-│   ├── app.py                 # FastAPI (API + servidor web)
-│   ├── config.py              # Configuracion (rutas, modelo)
-│   ├── database.py            # SQLite + busqueda full-text (FTS5)
-│   ├── transcriber.py         # Logica de transcripcion (libreria)
-│   ├── worker.py              # Hilo background (cola FIFO)
-│   ├── templates/
-│   │   └── index.html         # UI (Alpine.js + Tailwind CSS)
-│   └── static/
-│       └── app.js             # Logica frontend (SSE, subida, busqueda)
-├── tests/                     # Tests automatizados
+│   ├── app.py                 # FastAPI app: routes + lifespan + SSE
+│   ├── config.py              # paths and constants
+│   ├── database.py            # SQLite + FTS5 search
+│   ├── transcriber.py         # transcription + hallucination cleanup
+│   ├── worker.py              # background job processor (FIFO, GPU-bound)
+│   ├── templates/index.html   # single-page UI (Alpine.js + Tailwind)
+│   └── static/app.js          # frontend logic (SSE, upload, search, theme)
+├── tests/
 │   ├── conftest.py
-│   ├── test_api.py
-│   ├── test_database.py
-│   ├── test_integration.py
-│   └── test_transcriber.py
-└── venv/                      # Entorno virtual Python
+│   ├── test_api.py            # FastAPI endpoint tests
+│   ├── test_database.py       # DB CRUD + FTS5
+│   ├── test_integration.py    # full upload-to-delete flow
+│   └── test_transcriber.py    # segment cleanup logic
+├── requirements.txt
+├── LICENSE
+└── README.md
 ```
 
-## Stack tecnico
+## Tech stack
 
-| Componente | Tecnologia |
-|------------|------------|
-| Transcripcion | faster-whisper, modelo `large-v3`, CUDA float16 |
-| Backend | FastAPI, SQLite (WAL + FTS5), uvicorn |
-| Frontend | Alpine.js + Tailwind CSS (CDN, sin Node.js) |
-| Progreso en vivo | Server-Sent Events (SSE) |
-| Ejecucion | WSL2 Ubuntu, GPU NVIDIA |
-
-## Tests
-
-```bash
-cd /mnt/c/Development/transcriptvideo
-source venv/bin/activate
-pytest tests/ -v
-```
+| Layer | Tech |
+|-------|------|
+| Transcription | faster-whisper, `large-v3`, CUDA float16 |
+| Backend | FastAPI, uvicorn, SQLite (WAL + FTS5) |
+| Frontend | Alpine.js + Tailwind CSS via CDN (no Node.js, no build) |
+| Live progress | Server-Sent Events (SSE) |
+| Runtime | WSL2 Ubuntu + NVIDIA GPU |
 
 ## Troubleshooting
 
-### La wifi se desconecta al arrancar el servidor por primera vez
+### WiFi disconnects when starting the server for the first time
 
-Sintoma: al levantar el `.bat`, a los 1-2 minutos se cae la conexion wifi de Windows (hasta el punto de que no aparece ninguna red).
+**Symptom:** when the `.bat` launches, WiFi drops 1-2 min later (no networks visible in Windows).
 
-Causa: `faster-whisper` usa `huggingface_hub`, que por defecto activa `hf_transfer` — un downloader en Rust con muchas conexiones paralelas. En algunos PCs (drivers de wifi Realtek comunes en WSL2) esta carga agresiva crashea el stack de red de Windows.
+**Cause:** `faster-whisper` pulls the model via `huggingface_hub`, which enables `hf_transfer` by default — an aggressive Rust downloader using many parallel connections. On some PCs (Realtek-based WiFi adapters common in WSL2 setups), this crashes the Windows network stack.
 
-Solucion: el `start-webapp.bat` ya fuerza `HF_HUB_ENABLE_HF_TRANSFER=0` para descargar serial (mas lento pero estable). Si descargas manualmente el modelo, exporta la misma variable antes:
+**Fix:** the `start-webapp.bat` already forces `HF_HUB_ENABLE_HF_TRANSFER=0` (serial download — slower but stable). If you download the model manually, export the same variable:
 
 ```bash
 export HF_HUB_ENABLE_HF_TRANSFER=0
-python3 -c "from faster_whisper import WhisperModel; WhisperModel('large-v3', device='cuda', compute_type='float16')"
+python -c "from faster_whisper import WhisperModel; WhisperModel('large-v3', device='cuda', compute_type='float16')"
 ```
 
-### "Unable to open file 'model.bin'" al iniciar el servidor
+### "Unable to open file 'model.bin'" when the server starts
 
-El cache esta corrupto o incompleto (archivo `.incomplete` residual). Limpiar y reintentar:
+The cache is corrupted or incomplete (`.incomplete` blob left behind). Wipe and retry:
 
 ```bash
 wsl bash -c "rm -rf /root/.cache/huggingface/hub/models--Systran--faster-whisper-large-v3"
 ```
 
-Despues relanzar el `.bat` — volvera a descargar.
+Relaunch the `.bat` — it will re-download cleanly.
 
-### "Internal Server Error" al abrir `http://localhost:8000`
+### "Internal Server Error" on the home page
 
-Si la pagina principal da 500 pero la API (`/api/jobs`) responde bien, probablemente hay un mismatch de version de Starlette. El codigo usa la signatura nueva `templates.TemplateResponse(request, "index.html")`. Si Starlette es muy viejo, actualiza: `pip install --upgrade starlette fastapi`.
+If `/` returns 500 but `/api/jobs` works, you have an outdated Starlette. The code uses the modern `templates.TemplateResponse(request, "index.html")` signature. Upgrade:
 
-## Notas
+```bash
+python -m pip install --upgrade starlette fastapi
+```
 
-- El modelo Whisper se carga **una sola vez** al iniciar el servidor y se reutiliza para todos los jobs.
-- La deteccion de idioma es automatica (principalmente espanol, ocasionalmente ingles).
-- El post-procesado elimina alucinaciones tipicas de Whisper (repeticiones tipo "no, no, no, no...").
-- Las transcripciones existentes (creadas con el CLI) se importan automaticamente al iniciar la webapp.
-- No requiere Node.js ni ningun paso de build para el frontend.
+## Notes
+
+- The Whisper model loads **once** at server startup and is reused across all jobs.
+- Language is auto-detected per video.
+- Post-processing removes typical Whisper hallucinations: segments where one word dominates >75% (`no no no no ...`) collapse to that word, and runs of 4+ consecutive identical short segments (`Yes. Yes. Yes. Yes.`) merge into one.
+- Existing transcriptions already on disk (created with the CLI) are auto-imported into the DB on first launch.
+- No Node.js or build step required for the frontend.
+
+## License
+
+[MIT](LICENSE) — use it, fork it, ship it.
+
+---
+
+<sub>Versión en español: [docs/README.es.md](docs/README.es.md)</sub>

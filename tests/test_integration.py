@@ -60,7 +60,7 @@ def test_full_flow(full_app):
     output_dir = tmp_dirs["transcriptions"] / job["folder_name"]
     output_dir.mkdir(parents=True)
     txt_content = "[00:00:00,000 --> 00:00:05,000] Hello world"
-    (output_dir / "transcripcion.txt").write_text(txt_content, encoding="utf-8")
+    (output_dir / "transcription.txt").write_text(txt_content, encoding="utf-8")
     update_job(tmp_db, job_id, status="completed", progress=100.0)
     index_transcription(
         tmp_db, job_id=job_id, name="Integration Test", content=txt_content

@@ -87,7 +87,7 @@ def transcribe_video(
     Args:
         model: A loaded WhisperModel instance.
         video_path: Path to the .mp4 file.
-        output_dir: Directory to write transcripcion.txt into.
+        output_dir: Directory to write transcription.txt into.
         on_progress: Callback(percent, current_segment_text) called per segment.
         should_cancel: Callback that returns True if the job should be cancelled.
 
@@ -126,7 +126,7 @@ def transcribe_video(
         end_ts = format_timestamp(seg.end)
         txt_lines.append(f"[{start_ts} --> {end_ts}] {seg.text}")
 
-    txt_path = output_dir / "transcripcion.txt"
+    txt_path = output_dir / "transcription.txt"
     txt_path.write_text("\n".join(txt_lines), encoding="utf-8")
 
     if on_progress:

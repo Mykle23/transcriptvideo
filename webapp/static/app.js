@@ -16,10 +16,30 @@ function appData() {
         searchQuery: '',
         searchResults: null,
         eventSource: null,
+        theme: 'dark',
 
         init() {
+            this.theme = localStorage.getItem('theme') || 'dark';
+            this.applyTheme();
             this.loadJobs();
             this.connectSSE();
+        },
+
+        // ── Theme ─────────────────────────────────────
+
+        toggleTheme() {
+            this.theme = this.theme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', this.theme);
+            this.applyTheme();
+        },
+
+        applyTheme() {
+            const html = document.documentElement;
+            if (this.theme === 'dark') {
+                html.classList.add('dark');
+            } else {
+                html.classList.remove('dark');
+            }
         },
 
         // ── Data loading ──────────────────────────────
@@ -99,12 +119,12 @@ function appData() {
                     if (fileInput) fileInput.value = '';
                     this.loadJobs();
                 } else {
-                    alert('Error al subir: ' + xhr.responseText);
+                    alert('Upload failed: ' + xhr.responseText);
                 }
             };
             xhr.onerror = () => {
                 this.uploading = false;
-                alert('Error de conexion al subir el archivo.');
+                alert('Network error while uploading.');
             };
             xhr.open('POST', '/api/jobs');
             xhr.send(formData);
@@ -145,10 +165,10 @@ function appData() {
                     const data = await resp.json();
                     this.detailContent = data.content;
                 } else {
-                    this.detailContent = 'Error al cargar la transcripcion.';
+                    this.detailContent = 'Failed to load transcription.';
                 }
             } else if (job.status === 'failed') {
-                this.detailContent = 'Error: ' + (job.error_message || 'desconocido');
+                this.detailContent = 'Error: ' + (job.error_message || 'unknown');
             }
         },
 
@@ -194,7 +214,7 @@ function appData() {
         formatDate(iso) {
             if (!iso) return '';
             const d = new Date(iso);
-            return d.toLocaleDateString('es-ES', {
+            return d.toLocaleDateString('en-GB', {
                 day: '2-digit', month: 'short', year: 'numeric',
                 hour: '2-digit', minute: '2-digit',
             });

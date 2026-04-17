@@ -72,7 +72,7 @@ if STATIC_DIR.exists():
 
 
 def _import_existing_transcriptions() -> None:
-    """Scan transcripciones/ for folders not yet in the DB and import them."""
+    """Scan transcriptions/ for folders not yet in the DB and import them."""
     if not TRANSCRIPTIONS_DIR.exists():
         return
     existing_jobs = get_all_jobs(DB_PATH)
@@ -81,7 +81,7 @@ def _import_existing_transcriptions() -> None:
     for folder in sorted(TRANSCRIPTIONS_DIR.iterdir()):
         if not folder.is_dir() or folder.name in known_folders:
             continue
-        txt_path = folder / "transcripcion.txt"
+        txt_path = folder / "transcription.txt"
         if not txt_path.exists():
             continue
 
@@ -176,7 +176,7 @@ def update_job_endpoint(job_id: str, body: dict):
 
     # If name changed and job is completed, update FTS index
     if "name" in updates and job["status"] == "completed":
-        txt_path = TRANSCRIPTIONS_DIR / job["folder_name"] / "transcripcion.txt"
+        txt_path = TRANSCRIPTIONS_DIR / job["folder_name"] / "transcription.txt"
         if txt_path.exists():
             content = txt_path.read_text(encoding="utf-8")
             index_transcription(
@@ -229,7 +229,7 @@ def get_transcription(job_id: str):
     if job["status"] != "completed":
         raise HTTPException(400, "Transcription not available yet.")
 
-    txt_path = TRANSCRIPTIONS_DIR / job["folder_name"] / "transcripcion.txt"
+    txt_path = TRANSCRIPTIONS_DIR / job["folder_name"] / "transcription.txt"
     if not txt_path.exists():
         raise HTTPException(404, "Transcription file not found.")
 
@@ -243,7 +243,7 @@ def download_transcription(job_id: str):
     if not job:
         raise HTTPException(404, "Job not found.")
 
-    txt_path = TRANSCRIPTIONS_DIR / job["folder_name"] / "transcripcion.txt"
+    txt_path = TRANSCRIPTIONS_DIR / job["folder_name"] / "transcription.txt"
     if not txt_path.exists():
         raise HTTPException(404, "Transcription file not found.")
 

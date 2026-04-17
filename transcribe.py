@@ -10,7 +10,7 @@ from faster_whisper import WhisperModel
 
 BASE_DIR = Path("/mnt/c/Development/transcriptvideo")
 VIDEOS_DIR = BASE_DIR / "videos"
-OUTPUT_BASE = BASE_DIR / "transcripciones"
+OUTPUT_BASE = BASE_DIR / "transcriptions"
 
 MODEL_SIZE = "large-v3"
 DEVICE = "cuda"
@@ -79,8 +79,8 @@ def remove_hallucinations(segments: list[Segment]) -> tuple[list[Segment], int]:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Uso: python transcribe.py <nombre_del_video>")
-        print(f"\nVideos disponibles en {VIDEOS_DIR}:")
+        print("Usage: python transcribe.py <video_filename>")
+        print(f"\nVideos available in {VIDEOS_DIR}:")
         for f in sorted(VIDEOS_DIR.glob("*")):
             if f.is_file():
                 print(f"  - {f.name}")
@@ -90,18 +90,18 @@ def main() -> None:
     video_path = VIDEOS_DIR / video_name
 
     if not video_path.exists():
-        print(f"Error: No se encontró el video '{video_name}' en {VIDEOS_DIR}")
+        print(f"Error: video '{video_name}' not found in {VIDEOS_DIR}")
         sys.exit(1)
 
     output_dir = OUTPUT_BASE / video_path.stem
     if output_dir.exists() and any(output_dir.iterdir()):
-        print(f"Error: Ya existe una transcripción en {output_dir}")
-        print("Si deseas re-transcribir, elimina la carpeta primero.")
+        print(f"Error: transcription already exists at {output_dir}")
+        print("To re-transcribe, delete the folder first.")
         sys.exit(1)
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Cargando modelo '{MODEL_SIZE}' en GPU ({COMPUTE_TYPE})...")
+    print(f"Loading model '{MODEL_SIZE}' on GPU ({COMPUTE_TYPE})...")
     start_load = time.time()
 
     model = WhisperModel(
@@ -111,8 +111,8 @@ def main() -> None:
     )
 
     load_time = time.time() - start_load
-    print(f"Modelo cargado en {load_time:.1f}s")
-    print(f"Transcribiendo: {video_path}")
+    print(f"Model loaded in {load_time:.1f}s")
+    print(f"Transcribing: {video_path}")
     print("-" * 60)
 
     start_transcribe = time.time()
@@ -127,8 +127,8 @@ def main() -> None:
         ),
     )
 
-    print(f"Audio detectado: {info.duration:.1f}s ({info.duration / 60:.1f} min)")
-    print(f"Idioma detectado: {info.language} (probabilidad: {info.language_probability:.2%})")
+    print(f"Audio detected: {info.duration:.1f}s ({info.duration / 60:.1f} min)")
+    print(f"Language detected: {info.language} (probability: {info.language_probability:.2%})")
     print("-" * 60)
 
     raw_segments: list[Segment] = []
@@ -140,17 +140,17 @@ def main() -> None:
         print(f"  [{progress:5.1f}%] {format_timestamp(segment.start)} --> {format_timestamp(segment.end)}  {segment.text.strip()[:80]}{'...' if len(segment.text.strip()) > 80 else ''}")
         if len(raw_segments) % 50 == 0:
             eta = (info.duration - segment.end) / speed if speed > 0 else 0
-            print(f"         --- Velocidad: {speed:.1f}x | ETA: {eta / 60:.1f} min ---")
+            print(f"         --- Speed: {speed:.1f}x | ETA: {eta / 60:.1f} min ---")
 
     total_time = time.time() - start_transcribe
     speed_ratio = info.duration / total_time if total_time > 0 else 0
 
     print("-" * 60)
-    print("Aplicando post-procesado (eliminando alucinaciones)...")
+    print("Applying post-processing (removing hallucinations)...")
     clean_segments, removed = remove_hallucinations(raw_segments)
-    print(f"  Segmentos originales: {len(raw_segments)}")
-    print(f"  Segmentos eliminados: {removed}")
-    print(f"  Segmentos finales: {len(clean_segments)}")
+    print(f"  Original segments: {len(raw_segments)}")
+    print(f"  Removed segments: {removed}")
+    print(f"  Final segments: {len(clean_segments)}")
 
     txt_lines: list[str] = []
     srt_lines: list[str] = []
@@ -163,17 +163,17 @@ def main() -> None:
         srt_lines.append(seg.text)
         srt_lines.append("")
 
-    txt_path = output_dir / "transcripcion.txt"
-    srt_path = output_dir / "transcripcion.srt"
+    txt_path = output_dir / "transcription.txt"
+    srt_path = output_dir / "transcription.srt"
 
     txt_path.write_text("\n".join(txt_lines), encoding="utf-8")
     srt_path.write_text("\n".join(srt_lines), encoding="utf-8")
 
     print("\n" + "=" * 60)
-    print(f"Transcripcion completada!")
-    print(f"  Tiempo total: {total_time / 60:.1f} min")
-    print(f"  Velocidad: {speed_ratio:.1f}x tiempo real")
-    print(f"  Archivos generados:")
+    print("Transcription complete.")
+    print(f"  Total time: {total_time / 60:.1f} min")
+    print(f"  Speed: {speed_ratio:.1f}x real-time")
+    print(f"  Files generated:")
     print(f"    - {txt_path}")
     print(f"    - {srt_path}")
     print("=" * 60)
