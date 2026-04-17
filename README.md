@@ -24,8 +24,13 @@ cd transcriptvideo
 ```bash
 python3 -m venv venv
 source venv/bin/activate
+
+# Runtime
 pip install faster-whisper
-pip install fastapi uvicorn[standard] python-multipart aiofiles sse-starlette jinja2
+pip install fastapi "uvicorn[standard]" python-multipart aiofiles sse-starlette jinja2
+
+# Dev (solo para correr los tests)
+pip install pytest httpx
 ```
 
 ### 3. Verificar CUDA
@@ -43,9 +48,11 @@ Doble clic en **`start-webapp.bat`** desde el escritorio de Windows.
 Esto:
 1. Abre el navegador en `http://localhost:8000`
 2. Arranca el servidor FastAPI dentro de WSL
-3. Carga el modelo Whisper en GPU (~10 segundos la primera vez)
+3. Carga el modelo Whisper en GPU (~10 segundos, una vez ya descargado)
 
 > Si el navegador muestra error de conexion, esperar unos segundos y refrescar.
+
+> **Primera ejecucion:** si el modelo `large-v3` no esta todavia en el cache de HuggingFace (`/root/.cache/huggingface/hub/`), se descarga automaticamente la primera vez (~3 GB). Puede tardar 10-15 minutos segun la conexion.
 
 #### Acceso desde otros dispositivos
 
@@ -98,6 +105,11 @@ transcriptvideo/
 │   └── static/
 │       └── app.js             # Logica frontend (SSE, subida, busqueda)
 ├── tests/                     # Tests automatizados
+│   ├── conftest.py
+│   ├── test_api.py
+│   ├── test_database.py
+│   ├── test_integration.py
+│   └── test_transcriber.py
 └── venv/                      # Entorno virtual Python
 ```
 
@@ -118,6 +130,35 @@ cd /mnt/c/Development/transcriptvideo
 source venv/bin/activate
 pytest tests/ -v
 ```
+
+## Troubleshooting
+
+### La wifi se desconecta al arrancar el servidor por primera vez
+
+Sintoma: al levantar el `.bat`, a los 1-2 minutos se cae la conexion wifi de Windows (hasta el punto de que no aparece ninguna red).
+
+Causa: `faster-whisper` usa `huggingface_hub`, que por defecto activa `hf_transfer` — un downloader en Rust con muchas conexiones paralelas. En algunos PCs (drivers de wifi Realtek comunes en WSL2) esta carga agresiva crashea el stack de red de Windows.
+
+Solucion: el `start-webapp.bat` ya fuerza `HF_HUB_ENABLE_HF_TRANSFER=0` para descargar serial (mas lento pero estable). Si descargas manualmente el modelo, exporta la misma variable antes:
+
+```bash
+export HF_HUB_ENABLE_HF_TRANSFER=0
+python3 -c "from faster_whisper import WhisperModel; WhisperModel('large-v3', device='cuda', compute_type='float16')"
+```
+
+### "Unable to open file 'model.bin'" al iniciar el servidor
+
+El cache esta corrupto o incompleto (archivo `.incomplete` residual). Limpiar y reintentar:
+
+```bash
+wsl bash -c "rm -rf /root/.cache/huggingface/hub/models--Systran--faster-whisper-large-v3"
+```
+
+Despues relanzar el `.bat` — volvera a descargar.
+
+### "Internal Server Error" al abrir `http://localhost:8000`
+
+Si la pagina principal da 500 pero la API (`/api/jobs`) responde bien, probablemente hay un mismatch de version de Starlette. El codigo usa la signatura nueva `templates.TemplateResponse(request, "index.html")`. Si Starlette es muy viejo, actualiza: `pip install --upgrade starlette fastapi`.
 
 ## Notas
 
