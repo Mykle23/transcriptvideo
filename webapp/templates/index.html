@@ -46,6 +46,10 @@
         .dark ::-webkit-scrollbar-track { background: transparent; }
         .dark ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
         .dark ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        /* Use native dark UI for form controls (select popups, date pickers, etc.) */
+        .dark { color-scheme: dark; }
+        /* Fallback for <option> rendering in dark mode */
+        .dark select option { background-color: #0f0f0f; color: #ededed; }
     </style>
 </head>
 <body class="font-sans antialiased bg-white dark:bg-[#0a0a0a] text-neutral-900 dark:text-neutral-100 min-h-screen selection:bg-accent/30">
