@@ -4,40 +4,67 @@ Herramienta local para transcribir videos usando **faster-whisper** con GPU NVID
 
 ## Requisitos
 
-- **Windows 11** con **WSL2** (Ubuntu)
-- **GPU NVIDIA** con soporte CUDA
-- **Python 3.12** (dentro de WSL)
+- **Windows 11** con **WSL2** (distro Ubuntu)
+- **GPU NVIDIA** con drivers y CUDA Toolkit instalados (en Windows — WSL2 usa el driver del host via el pasaje CUDA de NVIDIA)
+- **Python 3.12** dentro de WSL (`sudo apt install python3.12 python3.12-venv`)
+- **Git** dentro de WSL
 - **Tailscale** (opcional, para acceso desde otros dispositivos)
 
-## Instalacion
+## Instalacion (desde cero)
+
+Todos los comandos se ejecutan **dentro de WSL** (no en CMD/PowerShell).
 
 ### 1. Clonar el proyecto
 
 ```bash
 cd /mnt/c/Development
-git clone <repo-url> transcriptvideo
+git clone git@github.com:Mykle23/transcriptvideo.git
 cd transcriptvideo
 ```
 
-### 2. Crear el entorno virtual y las dependencias
+> Si cloneas via HTTPS en vez de SSH: `git clone https://github.com/Mykle23/transcriptvideo.git`
+
+### 2. Crear el entorno virtual
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-
-# Runtime
-pip install faster-whisper
-pip install fastapi "uvicorn[standard]" python-multipart aiofiles sse-starlette jinja2
-
-# Dev (solo para correr los tests)
-pip install pytest httpx
 ```
 
-### 3. Verificar CUDA
+### 3. Instalar dependencias
 
 ```bash
-python3 -c "from faster_whisper import WhisperModel; m = WhisperModel('tiny', device='cuda'); print('CUDA OK')"
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
+
+> Nota: el `pip install` baja ~2 GB de dependencias (PyTorch + CUDA + ctranslate2). La primera vez tarda varios minutos.
+
+### 4. Verificar CUDA
+
+```bash
+python -c "from faster_whisper import WhisperModel; WhisperModel('tiny', device='cuda'); print('CUDA OK')"
+```
+
+Si esto funciona, el entorno esta listo. La primera vez descarga un modelo chico (`tiny`, ~40 MB) para validar.
+
+### 5. (Opcional) Pre-descargar el modelo grande
+
+El primer uso real con `large-v3` baja ~3 GB. Para evitar esperar en la primera transcripcion, descargarlo ahora:
+
+```bash
+HF_HUB_ENABLE_HF_TRANSFER=0 python -c "from faster_whisper import WhisperModel; WhisperModel('large-v3', device='cuda', compute_type='float16')"
+```
+
+> **Importante**: usar siempre `HF_HUB_ENABLE_HF_TRANSFER=0`. Sin esto, el downloader paralelo agresivo puede tumbar la wifi en algunos PCs (ver Troubleshooting).
+
+### 6. Correr los tests (opcional)
+
+```bash
+pytest tests/ -v
+```
+
+Deberian pasar los 21 tests.
 
 ## Uso
 
