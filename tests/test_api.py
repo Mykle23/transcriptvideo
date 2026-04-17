@@ -29,6 +29,14 @@ def app_client(tmp_dirs, tmp_db):
         yield client
 
 
+def test_index_page_renders(app_client):
+    response = app_client.get("/")
+    assert response.status_code == 200
+    assert "TranscriptVideo" in response.text
+    assert "alpinejs" in response.text
+    assert "tailwindcss" in response.text
+
+
 def test_upload_creates_job(app_client):
     fake_mp4 = io.BytesIO(b"fake video content")
     response = app_client.post(

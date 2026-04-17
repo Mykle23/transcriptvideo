@@ -109,7 +109,7 @@ def _import_existing_transcriptions() -> None:
 
 @app.get("/", response_class=HTMLResponse)
 def index_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 # -- Job CRUD --
