@@ -12,8 +12,7 @@
 
 Built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper) with a minimal FastAPI + Alpine.js web UI. Designed for personal use over Tailscale/VPN — upload from any device, process on the machine with the GPU.
 
-<!-- Add a screenshot at docs/screenshot.png -->
-<!-- ![TranscriptVideo UI](docs/screenshot.png) -->
+![TranscriptVideo UI](docs/screenshot.png)
 
 ## Features
 

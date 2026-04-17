@@ -12,6 +12,8 @@
 
 Construido sobre [faster-whisper](https://github.com/SYSTRAN/faster-whisper) con una UI web minimalista en FastAPI + Alpine.js. Pensado para uso personal sobre Tailscale/VPN — subi desde cualquier dispositivo, procesa en la maquina con la GPU.
 
+![TranscriptVideo UI](screenshot.png)
+
 ## Features
 
 - **Solo local** — Whisper corre en tu GPU, los videos nunca salen de la maquina
