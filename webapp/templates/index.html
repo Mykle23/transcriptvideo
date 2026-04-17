@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TranscriptVideo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { brand: '#6366f1' }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        mark { background-color: #fde68a; padding: 0 2px; border-radius: 2px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+
+<div x-data="appData()" x-init="init()" x-cloak>
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <h1 class="text-lg font-semibold text-gray-800">TranscriptVideo</h1>
+            <div class="flex items-center gap-3">
+                <button @click="searchOpen = true"
+                    class="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    Buscar
+                </button>
+                <button @click="if(confirm('Apagar el servidor?')) shutdown()"
+                    class="text-sm text-red-500 hover:text-red-700">
+                    Apagar
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-6 space-y-8">
+
+        <!-- Upload Section -->
+        <section class="bg-white rounded-lg border border-gray-200 p-5">
+            <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Subir video</h2>
+            <form @submit.prevent="upload()" class="space-y-3">
+                <div>
+                    <input type="text" x-model="uploadName" placeholder="Nombre de la transcripcion"
+                        class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+                        required>
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="flex-1 relative">
+                        <input type="file" accept=".mp4" @change="uploadFile = $event.target.files[0]"
+                            class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
+                    </label>
+                    <button type="submit" :disabled="!uploadFile || !uploadName.trim() || uploading"
+                        class="px-4 py-2 bg-brand text-white text-sm font-medium rounded hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span x-show="!uploading">Subir</span>
+                        <span x-show="uploading" x-text="'Subiendo ' + uploadProgress + '%'"></span>
+                    </button>
+                </div>
+                <div x-show="uploading" class="w-full bg-gray-200 rounded-full h-1.5">
+                    <div class="bg-brand h-1.5 rounded-full transition-all duration-300"
+                         :style="'width:' + uploadProgress + '%'"></div>
+                </div>
+            </form>
+        </section>
+
+        <!-- Active Queue -->
+        <section x-show="activeJobs.length > 0">
+            <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">En proceso</h2>
+            <div class="space-y-3">
+                <template x-for="job in activeJobs" :key="job.id">
+                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-medium text-sm" x-text="job.name"></span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs px-2 py-0.5 rounded-full"
+                                    :class="job.status === 'processing' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'"
+                                    x-text="job.status === 'processing' ? 'Procesando' : 'En cola'"></span>
+                                <button @click="cancelJob(job.id)"
+                                    class="text-xs text-red-500 hover:text-red-700">Cancelar</button>
+                            </div>
+                        </div>
+                        <div x-show="job.status === 'processing'" class="w-full bg-gray-200 rounded-full h-1.5">
+                            <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
+                                 :style="'width:' + job.progress + '%'"></div>
+                        </div>
+                        <div x-show="job.status === 'processing'" class="text-xs text-gray-400 mt-1"
+                             x-text="Math.round(job.progress) + '%'"></div>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        <!-- Completed -->
+        <section>
+            <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Transcripciones</h2>
+            <div x-show="completedJobs.length === 0" class="text-sm text-gray-400 italic">
+                No hay transcripciones todavia.
+            </div>
+            <div class="space-y-2">
+                <template x-for="job in completedJobs" :key="job.id">
+                    <div class="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:border-gray-300 transition"
+                         @click="openTranscription(job)">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="font-medium text-sm" x-text="job.name"></span>
+                                <div class="text-xs text-gray-400 mt-0.5">
+                                    <span x-text="formatDate(job.completed_at || job.created_at)"></span>
+                                    <span x-show="job.language" class="ml-2" x-text="job.language?.toUpperCase()"></span>
+                                    <span x-show="job.audio_duration" class="ml-2" x-text="formatDuration(job.audio_duration)"></span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span x-show="job.status === 'failed'"
+                                    class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Error</span>
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+    </main>
+
+    <!-- Transcription Detail Modal -->
+    <div x-show="detailJob" x-cloak
+         class="fixed inset-0 bg-black/40 z-20 flex items-start justify-center pt-12 px-4"
+         @click.self="detailJob = null; detailContent = ''">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col" @click.stop>
+            <!-- Modal header -->
+            <div class="flex items-center justify-between p-4 border-b border-gray-200">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <template x-if="!editingName">
+                        <h3 class="font-medium text-sm truncate cursor-pointer hover:text-brand"
+                            @click="editingName = true; editNameVal = detailJob.name"
+                            x-text="detailJob?.name"></h3>
+                    </template>
+                    <template x-if="editingName">
+                        <form @submit.prevent="saveName()" class="flex items-center gap-2 flex-1">
+                            <input x-model="editNameVal" x-ref="nameInput"
+                                class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                                @keydown.escape="editingName = false">
+                            <button type="submit" class="text-xs text-brand hover:underline">Guardar</button>
+                            <button type="button" @click="editingName = false" class="text-xs text-gray-400">Cancelar</button>
+                        </form>
+                    </template>
+                </div>
+                <div class="flex items-center gap-2 ml-3">
+                    <a :href="'/api/jobs/' + detailJob?.id + '/download'"
+                       class="text-xs text-brand hover:underline">Descargar</a>
+                    <select x-show="detailJob?.video_filename"
+                        :value="detailJob?.keep_video ? '1' : '0'"
+                        @change="toggleKeepVideo(detailJob.id, $event.target.value === '1')"
+                        class="text-xs border border-gray-300 rounded px-1 py-0.5">
+                        <option value="1">Conservar video</option>
+                        <option value="0">Borrar video</option>
+                    </select>
+                    <button @click="if(confirm('Eliminar esta transcripcion?')) deleteJob(detailJob.id)"
+                        class="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+                    <button @click="detailJob = null; detailContent = ''"
+                        class="text-gray-400 hover:text-gray-600 ml-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Modal body -->
+            <div class="p-4 overflow-y-auto flex-1">
+                <div x-show="!detailContent" class="text-sm text-gray-400">Cargando...</div>
+                <pre class="text-sm leading-relaxed whitespace-pre-wrap font-mono text-gray-700"
+                     x-text="detailContent"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Modal -->
+    <div x-show="searchOpen" x-cloak
+         class="fixed inset-0 bg-black/40 z-20 flex items-start justify-center pt-12 px-4"
+         @click.self="searchOpen = false"
+         @keydown.escape.window="searchOpen = false">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[70vh] flex flex-col" @click.stop>
+            <div class="p-4 border-b border-gray-200">
+                <input type="text" x-model="searchQuery" @input.debounce.300ms="doSearch()"
+                    x-ref="searchInput"
+                    placeholder="Buscar en todas las transcripciones..."
+                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <div x-show="searchResults === null" class="text-sm text-gray-400">
+                    Escribe para buscar.
+                </div>
+                <div x-show="searchResults !== null && searchResults.length === 0"
+                     class="text-sm text-gray-400">
+                    Sin resultados.
+                </div>
+                <div class="space-y-3">
+                    <template x-for="r in (searchResults || [])" :key="r.job_id">
+                        <div class="border border-gray-200 rounded p-3 cursor-pointer hover:border-gray-300"
+                             @click="openTranscriptionById(r.job_id); searchOpen = false">
+                            <div class="text-sm font-medium" x-text="r.name"></div>
+                            <div class="text-xs text-gray-500 mt-1" x-html="r.snippet"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
